@@ -73,7 +73,3 @@ This project is licensed under the MIT License.
 
 ## Contact
 For any queries or suggestions, feel free to reach out at [arsarsars1@gmail.com].
-
----
-
-Feel free to customize this README to better fit your project's specifics and needs.
