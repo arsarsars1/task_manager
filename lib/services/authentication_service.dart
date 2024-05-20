@@ -1,14 +1,14 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:task_manager/core/network/endpoints.dart';
 import 'package:task_manager/models/user_model.dart';
-import 'package:task_manager/services/api_client.dart';
+import 'package:task_manager/services/network_service.dart';
 
 class AuthenticationService {
-  final ApiClient _apiClient;
+  final NetworkService _networkService;
   static const String tokenKey = 'auth_token';
   static const String userKey = 'user_info';
 
-  AuthenticationService(this._apiClient);
+  AuthenticationService(this._networkService);
 
   Future<bool> isAuthenticated() async {
     final prefs = await SharedPreferences.getInstance();
@@ -34,11 +34,13 @@ class AuthenticationService {
   }
 
   Future<UserModel?> authenticate(String username, String password) async {
-    var response = await _apiClient.post(Endpoints.login, body: {
+    var response = await _networkService.post(Endpoints.login, body: {
       "username": username,
       "password": password,
     });
-    if ((response.status ?? false) && response.data != null) {
+    if (response.status &&
+        response.statusCode == 200 &&
+        response.data != null) {
       return UserModel.fromJson(response.data!);
     } else {
       throw Exception(response.message);

@@ -13,13 +13,30 @@ class TaskInitial extends TaskState {}
 class TaskLoading extends TaskState {}
 
 class TaskLoaded extends TaskState {
-  final List<Task> tasks;
+  final List<Todo> tasks;
   final bool hasReachedMax;
+  final bool isBottomLoading;
 
-  const TaskLoaded({required this.tasks, required this.hasReachedMax});
+  const TaskLoaded({
+    required this.tasks,
+    required this.hasReachedMax,
+    this.isBottomLoading = false,
+  });
+
+  TaskLoaded copyWith({
+    List<Todo>? tasks,
+    bool? hasReachedMax,
+    bool? isBottomLoading,
+  }) {
+    return TaskLoaded(
+      tasks: tasks ?? this.tasks,
+      hasReachedMax: hasReachedMax ?? this.hasReachedMax,
+      isBottomLoading: isBottomLoading ?? this.isBottomLoading,
+    );
+  }
 
   @override
-  List<Object> get props => [tasks, hasReachedMax];
+  List<Object> get props => [tasks, hasReachedMax, isBottomLoading];
 }
 
 class TaskUpdating extends TaskState {}

@@ -9,82 +9,63 @@ class TaskRepository {
 
   TaskRepository({required this.networkService});
 
-  Future<List<Task>> fetchTasks({int limit = 10, int skip = 0}) async {
-    try {
-      final response =
-          await networkService.getTasks(pageNo: skip, limit: limit);
-      if (response != null && response.status) {
-        final tasks = (response.data!['todos'] as List)
-            .map((taskJson) => Task.fromJson(taskJson))
-            .toList();
-        await _saveTasksToPrefs(tasks);
-        return tasks;
-      } else {
-        return await _getTasksFromPrefs();
-      }
-    } catch (error) {
-      return await _getTasksFromPrefs();
+  Future<TaskModel> fetchTasks({int limit = 10, int skip = 0}) async {
+    final response = await networkService.getTasks(skip: skip, limit: limit);
+    if (response != null) {
+      final tasks = TaskModel.fromJson(response);
+      await _saveTasksToPrefs(tasks.todos);
+      return tasks;
+    } else {
+      final todos = await _getTasksFromPrefs();
+      return TaskModel(
+          todos: todos, total: todos.length, skip: 0, limit: todos.length);
     }
   }
 
-  Future<Task> addTask(Task task) async {
-    try {
-      final response = await networkService.createTask(description: task.todo);
-      if (response != null && response.status && response.data != null) {
-        final newTask = Task.fromJson(response.data!);
-        await _addTaskToPrefs(newTask);
-        return newTask;
-      } else {
-        throw Exception('Failed to add task via API');
-      }
-    } catch (error) {
-      throw Exception(error.toString());
+  Future<Todo> addTask(String description) async {
+    final response = await networkService.createTask(description: description);
+    if (response != null) {
+      final newTask = Todo.fromJson(response);
+      await _addTaskToPrefs(newTask);
+      return newTask;
+    } else {
+      throw Exception('Failed to add task');
     }
   }
 
-  Future<Task> updateTask(Task task) async {
-    try {
-      final response = await networkService.updateTask(task);
-      if (response != null && response.status && response.data != null) {
-        final updatedTask = Task.fromJson(response.data!);
-        await _updateTaskInPrefs(updatedTask);
-        return updatedTask;
-      } else {
-        throw Exception('Failed to update task via API');
-      }
-    } catch (error) {
-      throw Exception(error.toString());
+  Future<Todo> updateTask(Todo task) async {
+    final response = await networkService.updateTask(task);
+    if (response != null) {
+      final updatedTask = Todo.fromJson(response);
+      await _updateTaskInPrefs(updatedTask);
+      return updatedTask;
+    } else {
+      throw Exception('Failed to update task');
     }
   }
 
   Future<void> deleteTask(int taskId) async {
-    try {
-      final response = await networkService.deleteTask(taskId: taskId);
-      if (response != null && response.status) {
-        await _deleteTaskFromPrefs(taskId);
-      } else {
-        throw Exception('Failed to delete task via API');
-      }
-    } catch (error) {
-      throw Exception(error.toString());
+    final response = await networkService.deleteTask(taskId: taskId);
+    if (response != null) {
+      await _deleteTaskFromPrefs(taskId);
+    } else {
+      throw Exception('Failed to delete task');
     }
   }
 
-  Future<void> _saveTasksToPrefs(List<Task> tasks) async {
+  Future<void> _saveTasksToPrefs(List<Todo> tasks) async {
     final prefs = await SharedPreferences.getInstance();
     final tasksJson = tasks.map((task) => task.toJson()).toList();
     await prefs.setString('tasks', jsonEncode(tasksJson));
   }
 
-  Future<void> _addTaskToPrefs(Task task) async {
-    final prefs = await SharedPreferences.getInstance();
+  Future<void> _addTaskToPrefs(Todo task) async {
     final tasks = await _getTasksFromPrefs();
     tasks.add(task);
     await _saveTasksToPrefs(tasks);
   }
 
-  Future<void> _updateTaskInPrefs(Task task) async {
-    final prefs = await SharedPreferences.getInstance();
+  Future<void> _updateTaskInPrefs(Todo task) async {
     final tasks = await _getTasksFromPrefs();
     final taskIndex = tasks.indexWhere((t) => t.id == task.id);
     if (taskIndex != -1) {
@@ -94,18 +75,17 @@ class TaskRepository {
   }
 
   Future<void> _deleteTaskFromPrefs(int taskId) async {
-    final prefs = await SharedPreferences.getInstance();
     final tasks = await _getTasksFromPrefs();
     final updatedTasks = tasks.where((task) => task.id != taskId).toList();
     await _saveTasksToPrefs(updatedTasks);
   }
 
-  Future<List<Task>> _getTasksFromPrefs() async {
+  Future<List<Todo>> _getTasksFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     final tasksString = prefs.getString('tasks');
     if (tasksString != null) {
       final List tasksJson = jsonDecode(tasksString);
-      return tasksJson.map((taskJson) => Task.fromJson(taskJson)).toList();
+      return tasksJson.map((taskJson) => Todo.fromJson(taskJson)).toList();
     }
     return [];
   }

@@ -6,7 +6,7 @@ import 'package:task_manager/models/task_model.dart';
 
 class TaskList extends StatelessWidget {
   final ScrollController scrollController;
-  final List<Task> tasks;
+  final List<Todo> tasks;
   final bool hasReachedMax;
 
   const TaskList(
@@ -27,7 +27,7 @@ class TaskList extends StatelessWidget {
         final task = tasks[index];
         return ListTile(
           onTap: () {
-            final updatedTask = Task(
+            final updatedTask = Todo(
               id: task.id,
               todo: task.todo,
               completed: !task.completed,
@@ -40,7 +40,7 @@ class TaskList extends StatelessWidget {
           trailing: Checkbox(
             value: task.completed,
             onChanged: (bool? value) {
-              final updatedTask = Task(
+              final updatedTask = Todo(
                 id: task.id,
                 todo: task.todo,
                 completed: value ?? false,

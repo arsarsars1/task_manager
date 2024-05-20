@@ -5,10 +5,9 @@ import 'package:task_manager/blocs/authentication/authentication_event.dart';
 import 'package:task_manager/blocs/task/task_bloc.dart';
 import 'package:task_manager/blocs/task/task_event.dart';
 import 'package:task_manager/blocs/task/task_state.dart';
+import 'package:task_manager/cubits/connectivity_cubit.dart';
 import 'package:task_manager/models/task_model.dart';
-import 'package:task_manager/services/connectivity_cubit.dart';
 import 'package:task_manager/ui/screens/home_screen/components/task_list.dart';
-import 'package:task_manager/ui/screens/loading_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,12 +20,12 @@ class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
   final int _limit = 20;
   int _skip = 0;
-  bool _isFetching = false;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _fetchTasks();
   }
 
   @override
@@ -35,11 +34,17 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  void _fetchTasks() {
+    context.read<TaskBloc>().add(FetchTasks(limit: _limit, skip: _skip));
+  }
+
   void _onScroll() {
-    if (_isBottom && !_isFetching) {
-      _isFetching = true;
-      _skip += _limit;
-      context.read<TaskBloc>().add(FetchTasks(limit: _limit, skip: _skip));
+    if (_isBottom && !context.read<TaskBloc>().isFetching) {
+      final currentState = context.read<TaskBloc>().state;
+      if (currentState is TaskLoaded && !currentState.hasReachedMax) {
+        _skip += _limit;
+        _fetchTasks();
+      }
     }
   }
 
@@ -70,18 +75,70 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: Stack(children: [
-        Column(children: [
-          BlocBuilder<ConnectivityCubit, ConnectivityStatus>(
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              BlocBuilder<ConnectivityCubit, ConnectivityStatus>(
+                builder: (context, state) {
+                  if (state == ConnectivityStatus.disconnected) {
+                    return Container(
+                      color: Colors.red,
+                      padding: const EdgeInsets.all(8.0),
+                      child: const Center(
+                        child: Text(
+                          'No internet connection. You are offline.',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
+              Expanded(
+                child: BlocBuilder<TaskBloc, TaskState>(
+                  builder: (context, state) {
+                    if (state is TaskLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    } else if (state is TaskLoaded) {
+                      if (state.tasks.isEmpty) {
+                        return const Center(child: Text('No tasks available.'));
+                      }
+                      return Column(
+                        children: [
+                          Expanded(
+                            child: TaskList(
+                              scrollController: _scrollController,
+                              tasks: state.tasks,
+                              hasReachedMax: state.hasReachedMax,
+                            ),
+                          ),
+                          if (state.isBottomLoading)
+                            const Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: CircularProgressIndicator(),
+                            ),
+                        ],
+                      );
+                    } else if (state is TaskError) {
+                      return Center(child: Text(state.error));
+                    } else {
+                      return Container();
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+          BlocBuilder<TaskBloc, TaskState>(
             builder: (context, state) {
-              if (state == ConnectivityStatus.disconnected) {
+              if (state is TaskUpdating || state is TaskDeleting) {
                 return Container(
-                  color: Colors.red,
-                  padding: const EdgeInsets.all(8.0),
+                  color: Colors.black54,
                   child: const Center(
-                    child: Text(
-                      'No internet connection. You are offline.',
-                      style: TextStyle(color: Colors.white),
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
                   ),
                 );
@@ -89,41 +146,8 @@ class _HomeScreenState extends State<HomeScreen> {
               return const SizedBox.shrink();
             },
           ),
-          Expanded(
-            child: BlocBuilder<TaskBloc, TaskState>(
-              builder: (context, state) {
-                if (state is TaskLoading && state is TaskInitial) {
-                  return const Center(child: CircularProgressIndicator());
-                } else if (state is TaskLoaded) {
-                  _isFetching = false;
-                  if (state.tasks.isEmpty) {
-                    return const Center(child: Text('No tasks available.'));
-                  }
-                  return TaskList(
-                    scrollController: _scrollController,
-                    tasks: state.tasks,
-                    hasReachedMax: state.hasReachedMax,
-                  );
-                } else if (state is TaskError) {
-                  return Center(child: Text(state.error));
-                } else {
-                  return Container();
-                }
-              },
-            ),
-          ),
-        ]),
-        BlocBuilder<TaskBloc, TaskState>(
-          builder: (context, state) {
-            if (state is TaskUpdating ||
-                state is TaskDeleting ||
-                state is TaskLoading) {
-              return const LoadingScreen();
-            }
-            return const SizedBox.shrink();
-          },
-        ),
-      ]),
+        ],
+      ),
     );
   }
 
@@ -148,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             TextButton(
               onPressed: () {
-                final task = Task(
+                final task = Todo(
                   id: DateTime.now().millisecondsSinceEpoch,
                   todo: taskController.text,
                   completed: false,

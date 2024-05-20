@@ -1,47 +1,88 @@
+import 'dart:convert';
+import 'dart:developer';
+
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:task_manager/core/network/endpoints.dart';
 import 'package:task_manager/models/api_model.dart';
 import 'package:task_manager/models/task_model.dart';
-import 'package:task_manager/services/api_client.dart';
-import 'package:task_manager/services/task_api.dart';
 
 class NetworkService {
-  final TaskApi taskApi = TaskApi();
-
-  Future<ApiResponseModel?> getTasks(
-      {required int limit, required int pageNo}) async {
-    return await taskApi.fetchTasks(limit: limit, skip: pageNo);
+  final Map<String, String> baseHeadersBody = {
+    "Content-Type": "application/json",
+    // "Accept": "*/*",
+  };
+  Future<Map<String, dynamic>?> getTasks(
+      {required int skip, int limit = 10}) async {
+    final response =
+        await http.get(Uri.parse('${Endpoints.todos}?limit=$limit&skip=$skip'));
+    if (response.statusCode == 200) {
+      debugPrint(response.request!.url.toString());
+      debugPrint(response.body);
+      return json.decode(response.body);
+    }
+    return null;
   }
 
-  Future<ApiResponseModel?> createTask({required String description}) async {
-    return await taskApi.createTask(description: description);
+  Future<Map<String, dynamic>?> createTask(
+      {required String description}) async {
+    final response = await http.post(
+      Uri.parse(Endpoints.todoAdd),
+      headers: baseHeadersBody,
+      body: jsonEncode({"todo": description, "completed": false, "userId": 1}),
+    );
+    if (response.statusCode == 200) {
+      debugPrint(response.request!.url.toString());
+      debugPrint(response.body);
+      return json.decode(response.body);
+    }
+    return null;
   }
 
-  Future<ApiResponseModel?> updateTask(Task task) async {
-    return await taskApi.updateTask(task);
+  Future<Map<String, dynamic>?> updateTask(Todo task) async {
+    final response = await http.put(
+      Uri.parse('${Endpoints.todos}/${task.id}'),
+      headers: baseHeadersBody,
+      body: jsonEncode(task.toApiJson()),
+    );
+    if (response.statusCode == 200) {
+      debugPrint(response.request!.url.toString());
+      debugPrint(response.body);
+      return json.decode(response.body);
+    }
+    return null;
   }
 
-  Future<ApiResponseModel?> deleteTask({required int taskId}) async {
-    return await taskApi.deleteTask(taskId);
+  Future<Map<String, dynamic>?> deleteTask({required int taskId}) async {
+    final response = await http.delete(Uri.parse('${Endpoints.todos}/$taskId'));
+    if (response.statusCode == 200) {
+      debugPrint(response.body);
+      return json.decode(response.body);
+    }
+    return null;
   }
 
-//todo
-  Future<ApiResponseModel?> login({
-    required String userName,
-    required String password,
-  }) async {
+  Future<ApiResponseModel> post(String pathUrl,
+      {Map<String, dynamic>? body}) async {
     try {
-      var data = await apiClient.post("/auth/login", body: {
-        "username": userName,
-        "password": password,
+      final response = await http.post(
+        Uri.parse(Endpoints.login),
+        headers: baseHeadersBody,
+        body: body != null ? jsonEncode(body) : null,
+      );
+      return ApiResponseModel.fromJson({
+        "status": true,
+        "message": "success",
+        "statusCode": response.statusCode,
+        "data": json.decode(response.body),
       });
-      return data;
     } catch (e) {
+      log(e.toString());
       return ApiResponseModel(
         status: false,
-        message: "",
+        message: e.toString(),
         data: {},
       );
     }
   }
 }
-
-final networkService = NetworkService();

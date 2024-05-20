@@ -6,6 +6,7 @@ import 'package:task_manager/repositories/task_repository.dart';
 
 class TaskBloc extends Bloc<TaskEvent, TaskState> {
   final TaskRepository taskRepository;
+  bool isFetching = false;
 
   TaskBloc({required this.taskRepository}) : super(TaskInitial()) {
     on<FetchTasks>(_onFetchTasks);
@@ -15,38 +16,55 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   }
 
   Future<void> _onFetchTasks(FetchTasks event, Emitter<TaskState> emit) async {
+    if (isFetching) return;
     final currentState = state;
-    var oldTasks = <Task>[];
+    if (currentState is TaskLoaded && currentState.hasReachedMax) return;
+
+    isFetching = true;
+    var oldTasks = <Todo>[];
     if (currentState is TaskLoaded) {
       oldTasks = currentState.tasks;
     }
 
     try {
-      emit(TaskLoading());
-      final tasks =
+      if (event.skip == 0) {
+        emit(TaskLoading());
+      } else {
+        emit((currentState as TaskLoaded).copyWith(isBottomLoading: true));
+      }
+
+      final taskModel =
           await taskRepository.fetchTasks(limit: event.limit, skip: event.skip);
+      final tasks = taskModel.todos;
+      final totalTasks = taskModel.total;
+
+      final hasReachedMax = oldTasks.length + tasks.length >= totalTasks;
+
       emit(TaskLoaded(
         tasks: oldTasks + tasks,
-        hasReachedMax: tasks.length < event.limit,
+        hasReachedMax: hasReachedMax,
+        isBottomLoading: false, // Ensure bottom loader is reset
       ));
     } catch (error) {
       emit(TaskError(error: error.toString()));
+    } finally {
+      isFetching = false;
     }
   }
 
   Future<void> _onAddTask(AddTask event, Emitter<TaskState> emit) async {
-    try {
-      final currentState = state;
-      if (currentState is TaskLoaded) {
+    final currentState = state;
+    if (currentState is TaskLoaded) {
+      try {
         emit(TaskUpdating());
-        final newTask = await taskRepository.addTask(event.task);
-        final updatedTasks = List<Task>.from(currentState.tasks)..add(newTask);
+        final newTask = await taskRepository.addTask(event.task.todo);
+        final updatedTasks = List<Todo>.from(currentState.tasks)..add(newTask);
         emit(TaskLoaded(tasks: updatedTasks, hasReachedMax: false));
-      } else {
-        emit(const TaskError(error: 'Failed to add task'));
+      } catch (error) {
+        emit(TaskError(error: error.toString()));
       }
-    } catch (error) {
-      emit(TaskError(error: error.toString()));
+    } else {
+      emit(const TaskError(error: 'Failed to add task'));
     }
   }
 
@@ -59,7 +77,8 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
         final updatedTasks = currentState.tasks.map((task) {
           return task.id == updatedTask.id ? updatedTask : task;
         }).toList();
-        emit(TaskLoaded(tasks: updatedTasks, hasReachedMax: false));
+        emit(TaskLoaded(
+            tasks: updatedTasks, hasReachedMax: currentState.hasReachedMax));
       } catch (error) {
         emit(TaskError(error: error.toString()));
       }
@@ -77,7 +96,8 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
         final updatedTasks = currentState.tasks
             .where((task) => task.id != event.taskId)
             .toList();
-        emit(TaskLoaded(tasks: updatedTasks, hasReachedMax: false));
+        emit(TaskLoaded(
+            tasks: updatedTasks, hasReachedMax: currentState.hasReachedMax));
       } catch (error) {
         emit(TaskError(error: error.toString()));
       }
