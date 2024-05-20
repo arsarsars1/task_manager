@@ -26,6 +26,16 @@ class TaskList extends StatelessWidget {
         }
         final task = tasks[index];
         return ListTile(
+          onTap: () {
+            final updatedTask = Task(
+              id: task.id,
+              todo: task.todo,
+              completed: !task.completed,
+              userId: task.userId,
+            );
+            BlocProvider.of<TaskBloc>(context)
+                .add(UpdateTask(task: updatedTask));
+          },
           title: Text(task.todo),
           trailing: Checkbox(
             value: task.completed,
