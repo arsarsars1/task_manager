@@ -22,7 +22,7 @@ class TaskList extends StatelessWidget {
       itemCount: hasReachedMax ? tasks.length : tasks.length + 1,
       itemBuilder: (context, index) {
         if (index >= tasks.length) {
-          return const Center(child: CircularProgressIndicator());
+          return const SizedBox();
         }
         final task = tasks[index];
         return ListTile(
