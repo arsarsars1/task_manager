@@ -43,7 +43,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       emit(TaskLoaded(
         tasks: oldTasks + tasks,
         hasReachedMax: hasReachedMax,
-        isBottomLoading: false, // Ensure bottom loader is reset
+        isBottomLoading: false,
       ));
     } catch (error) {
       emit(TaskError(error: error.toString()));

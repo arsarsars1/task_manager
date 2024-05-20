@@ -12,36 +12,38 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
   final AuthenticationBloc authenticationBloc;
   final AuthenticationRepository authenticationRepository;
 
-  LoginBloc(
-      {required this.authenticationRepository,
-      required this.authenticationBloc})
-      : super(LoginInitial()) {
-    on<LoginButtonPressed>(mapEventToState);
+  LoginBloc({
+    required this.authenticationRepository,
+    required this.authenticationBloc,
+  }) : super(LoginInitial()) {
+    on<LoginButtonPressed>(_onLoginButtonPressed);
   }
 
-  mapEventToState(LoginEvent event, Emitter<LoginState> emit) async {
-    if (event is LoginButtonPressed) {
-      emit(LoginLoading());
+  Future<void> _onLoginButtonPressed(
+      LoginButtonPressed event, Emitter<LoginState> emit) async {
+    emit(LoginLoading());
 
-      try {
-        UserModel? response = await authenticationRepository.authenticate(
-          username: event.username,
-          password: event.password,
+    try {
+      UserModel? response = await authenticationRepository.authenticate(
+        username: event.username,
+        password: event.password,
+      );
+      if (response != null) {
+        Constant.showMessage("Login successfully");
+        await authenticationRepository.persistUser(response);
+        await authenticationRepository.persistToken(response.token);
+        authenticationBloc
+            .add(LoggedIn(username: event.username, password: event.password));
+        emit(LoginInitial());
+      } else {
+        Constant.showMessage(
+          "Unable to complete process, please try again",
         );
-        if (response != null) {
-          Constant.showMessage("Login successfully");
-          await authenticationRepository.persistUser(userModelToJson(response));
-          await authenticationRepository.persistToken(response.token);
-          authenticationBloc.add(LoggedIn(token: response.token));
-          emit(LoginInitial());
-        } else {
-          Constant.showMessage(
-            "Unable to complete process, please try again",
-          );
-        }
-      } catch (error) {
-        emit(LoginFailure(error: error.toString()));
+        emit(LoginFailure(
+            error: "Unable to complete process, please try again"));
       }
+    } catch (error) {
+      emit(LoginFailure(error: error.toString()));
     }
   }
 }

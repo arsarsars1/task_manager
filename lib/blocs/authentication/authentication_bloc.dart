@@ -10,31 +10,39 @@ class AuthenticationBloc
 
   AuthenticationBloc(this._authenticationRepository)
       : super(AuthenticationUninitialized()) {
-    on<AppStarted>(mapEventToState);
-    on<LoggedIn>(mapEventToState);
-    on<LoggedOut>(mapEventToState);
+    on<AppStarted>(_mapEventToState);
+    on<LoggedIn>(_mapEventToState);
+    on<LoggedOut>(_mapEventToState);
   }
 
-  mapEventToState(
+  Future<void> _mapEventToState(
       AuthenticationEvent event, Emitter<AuthenticationState> emit) async {
     if (event is AppStarted) {
       emit(AuthenticationLoading());
       final bool isAuthenticated =
           await _authenticationRepository.isAuthenticated();
       if (isAuthenticated) {
-        emit(AuthenticationAuthenticated());
+        final user = await _authenticationRepository.getCurrentUser();
+        if (user != null) {
+          emit(AuthenticationAuthenticated(user: user));
+        } else {
+          emit(AuthenticationUnauthenticated());
+        }
       } else {
         emit(AuthenticationUnauthenticated());
       }
-    }
-
-    if (event is LoggedIn) {
+    } else if (event is LoggedIn) {
       emit(AuthenticationLoading());
-      await _authenticationRepository.persistToken(event.token);
-      emit(AuthenticationAuthenticated());
-    }
-
-    if (event is LoggedOut) {
+      final user = await _authenticationRepository.authenticate(
+          username: event.username, password: event.password);
+      if (user != null) {
+        await _authenticationRepository.persistUser(user);
+        await _authenticationRepository.persistToken(user.token);
+        emit(AuthenticationAuthenticated(user: user));
+      } else {
+        emit(AuthenticationUnauthenticated());
+      }
+    } else if (event is LoggedOut) {
       emit(AuthenticationLoading());
       await _authenticationRepository.deleteToken();
       emit(AuthenticationUnauthenticated());

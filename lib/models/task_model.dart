@@ -53,6 +53,20 @@ class Todo {
         "userId": userId,
       };
 
+  Todo copyWith({
+    int? id,
+    String? todo,
+    bool? completed,
+    int? userId,
+  }) {
+    return Todo(
+      id: id ?? this.id,
+      todo: todo ?? this.todo,
+      completed: completed ?? this.completed,
+      userId: userId ?? this.userId,
+    );
+  }
+
   Map<String, dynamic> toApiJson() => {
         "todo": todo,
         "completed": completed,

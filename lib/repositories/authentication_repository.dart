@@ -11,8 +11,8 @@ class AuthenticationRepository {
     return await _authenticationService.authenticate(username, password);
   }
 
-  Future<void> persistUser(String user) async {
-    return await _authenticationService.persistUser(user);
+  Future<void> persistUser(UserModel user) async {
+    return await _authenticationService.persistUser(userModelToJson(user));
   }
 
   Future<void> persistToken(String token) async {
@@ -25,5 +25,9 @@ class AuthenticationRepository {
 
   Future<bool> isAuthenticated() async {
     return await _authenticationService.isAuthenticated();
+  }
+
+  Future<UserModel?> getCurrentUser() async {
+    return await _authenticationService.getCurrentUser();
   }
 }

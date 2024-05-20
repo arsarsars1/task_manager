@@ -10,6 +10,7 @@ import 'package:task_manager/repositories/authentication_repository.dart';
 import 'package:task_manager/repositories/task_repository.dart';
 import 'package:task_manager/services/authentication_service.dart';
 import 'package:task_manager/services/connectivity_service.dart';
+import 'package:task_manager/services/navigation_service.dart';
 import 'package:task_manager/services/network_service.dart';
 import 'package:task_manager/ui/screens/app_init_screen.dart';
 
@@ -34,8 +35,9 @@ void main() {
             create: (context) => TaskBloc(
               taskRepository: TaskRepository(
                 networkService: NetworkService(),
+                connectivityService: ConnectivityService(),
               ),
-            )..add(const FetchTasks(limit: 20, skip: 0)), // Initialize here
+            )..add(const FetchTasks(limit: 20, skip: 0)),
           ),
           BlocProvider<ConnectivityCubit>(
             create: (context) =>
@@ -49,18 +51,18 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  final ConnectivityService connectivityService = ConnectivityService();
-
   MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: NavigationService.navigatorKey,
       title: 'Task Manager',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: AppInit(connectivityService: connectivityService),
+      home: const AppInit(),
     );
   }
 }

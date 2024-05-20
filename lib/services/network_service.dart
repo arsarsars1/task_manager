@@ -10,8 +10,8 @@ import 'package:task_manager/models/task_model.dart';
 class NetworkService {
   final Map<String, String> baseHeadersBody = {
     "Content-Type": "application/json",
-    // "Accept": "*/*",
   };
+
   Future<Map<String, dynamic>?> getTasks(
       {required int skip, int limit = 10}) async {
     final response =

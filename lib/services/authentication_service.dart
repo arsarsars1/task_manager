@@ -46,4 +46,13 @@ class AuthenticationService {
       throw Exception(response.message);
     }
   }
+
+  Future<UserModel?> getCurrentUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userString = prefs.getString(userKey);
+    if (userString != null) {
+      return userModelFromJson(userString);
+    }
+    return null;
+  }
 }
