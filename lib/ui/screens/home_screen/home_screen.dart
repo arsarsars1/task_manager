@@ -4,39 +4,87 @@ import 'package:task_manager/blocs/authentication/authentication_bloc.dart';
 import 'package:task_manager/blocs/authentication/authentication_event.dart';
 import 'package:task_manager/blocs/task/task_bloc.dart';
 import 'package:task_manager/blocs/task/task_event.dart';
+import 'package:task_manager/blocs/task/task_state.dart';
 import 'package:task_manager/models/task_model.dart';
-import 'package:task_manager/repositories/task_repository.dart';
-import 'package:task_manager/services/network_service.dart';
 import 'package:task_manager/ui/screens/home_screen/components/task_list.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final ScrollController _scrollController = ScrollController();
+  final int _limit = 20;
+  int _skip = 0;
+  bool _isFetching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_isBottom && !_isFetching) {
+      _isFetching = true;
+      _skip += _limit;
+      context.read<TaskBloc>().add(FetchTasks(limit: _limit, skip: _skip));
+    }
+  }
+
+  bool get _isBottom {
+    if (!_scrollController.hasClients) return false;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.offset;
+    return currentScroll >= (maxScroll * 0.9);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return BlocProvider<TaskBloc>(
-      create: (context) => TaskBloc(
-        taskRepository: TaskRepository(networkService: NetworkService()),
-      )..add(const FetchTasks()),
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Tasks'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.logout),
-              onPressed: () {
-                BlocProvider.of<AuthenticationBloc>(context).add(LoggedOut());
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.add),
-              onPressed: () {
-                _showAddTaskDialog(context);
-              },
-            ),
-          ],
-        ),
-        body: const TaskList(),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Tasks'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              BlocProvider.of<AuthenticationBloc>(context).add(LoggedOut());
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () {
+              _showAddTaskDialog(context);
+            },
+          ),
+        ],
+      ),
+      body: BlocBuilder<TaskBloc, TaskState>(
+        builder: (context, state) {
+          if (state is TaskLoading && state is TaskInitial) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (state is TaskLoaded) {
+            _isFetching = false;
+            return TaskList(
+              scrollController: _scrollController,
+              tasks: state.tasks,
+              hasReachedMax: state.hasReachedMax,
+            );
+          } else if (state is TaskError) {
+            return const Center(child: Text('Failed to load tasks'));
+          } else {
+            return Container();
+          }
+        },
       ),
     );
   }
@@ -56,7 +104,7 @@ class HomeScreen extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
+                Navigator.of(ctx).pop();
               },
               child: const Text('Cancel'),
             ),
@@ -69,7 +117,7 @@ class HomeScreen extends StatelessWidget {
                   userId: 1,
                 );
                 BlocProvider.of<TaskBloc>(context).add(AddTask(task: task));
-                Navigator.of(context).pop();
+                Navigator.of(ctx).pop();
               },
               child: const Text('Add'),
             ),

@@ -2,49 +2,48 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:task_manager/blocs/task/task_bloc.dart';
 import 'package:task_manager/blocs/task/task_event.dart';
-import 'package:task_manager/blocs/task/task_state.dart';
 import 'package:task_manager/models/task_model.dart';
 
 class TaskList extends StatelessWidget {
-  const TaskList({super.key});
+  final ScrollController scrollController;
+  final List<Task> tasks;
+  final bool hasReachedMax;
+
+  const TaskList(
+      {super.key,
+      required this.scrollController,
+      required this.tasks,
+      required this.hasReachedMax});
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<TaskBloc, TaskState>(
-      builder: (context, state) {
-        if (state is TaskLoading) {
+    return ListView.builder(
+      controller: scrollController,
+      itemCount: hasReachedMax ? tasks.length : tasks.length + 1,
+      itemBuilder: (context, index) {
+        if (index >= tasks.length) {
           return const Center(child: CircularProgressIndicator());
-        } else if (state is TaskLoaded) {
-          return ListView.builder(
-            itemCount: state.tasks.length,
-            itemBuilder: (context, index) {
-              final task = state.tasks[index];
-              return ListTile(
-                title: Text(task.todo),
-                trailing: Checkbox(
-                  value: task.completed,
-                  onChanged: (bool? value) {
-                    final updatedTask = Task(
-                      id: task.id,
-                      todo: task.todo,
-                      completed: value ?? false,
-                      userId: task.userId,
-                    );
-                    BlocProvider.of<TaskBloc>(context)
-                        .add(UpdateTask(task: updatedTask));
-                  },
-                ),
-                onLongPress: () {
-                  _showDeleteConfirmationDialog(context, task.id);
-                },
-              );
-            },
-          );
-        } else if (state is TaskError) {
-          return const Center(child: Text('Failed to load tasks'));
-        } else {
-          return Container();
         }
+        final task = tasks[index];
+        return ListTile(
+          title: Text(task.todo),
+          trailing: Checkbox(
+            value: task.completed,
+            onChanged: (bool? value) {
+              final updatedTask = Task(
+                id: task.id,
+                todo: task.todo,
+                completed: value ?? false,
+                userId: task.userId,
+              );
+              BlocProvider.of<TaskBloc>(context)
+                  .add(UpdateTask(task: updatedTask));
+            },
+          ),
+          onLongPress: () {
+            _showDeleteConfirmationDialog(context, task.id);
+          },
+        );
       },
     );
   }
@@ -59,7 +58,7 @@ class TaskList extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
+                Navigator.of(ctx).pop();
               },
               child: const Text('Cancel'),
             ),
@@ -67,7 +66,7 @@ class TaskList extends StatelessWidget {
               onPressed: () {
                 BlocProvider.of<TaskBloc>(context)
                     .add(DeleteTask(taskId: taskId));
-                Navigator.of(context).pop();
+                Navigator.of(ctx).pop();
               },
               child: const Text('Delete'),
             ),

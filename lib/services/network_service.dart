@@ -7,7 +7,7 @@ class NetworkService {
   final TaskApi taskApi = TaskApi();
 
   Future<ApiResponseModel?> getTasks({required int pageNo}) async {
-    return await taskApi.fetchTasks(limit: 10, skip: pageNo);
+    return await taskApi.fetchTasks(limit: 20, skip: pageNo);
   }
 
   Future<ApiResponseModel?> createTask({required String description}) async {
