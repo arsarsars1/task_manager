@@ -1,3 +1,4 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:task_manager/blocs/authentication/authentication_bloc.dart';
@@ -9,6 +10,7 @@ import 'package:task_manager/repositories/authentication_repository.dart';
 import 'package:task_manager/repositories/task_repository.dart';
 import 'package:task_manager/services/api_client.dart';
 import 'package:task_manager/services/authentication_service.dart';
+import 'package:task_manager/services/connectivity_cubit.dart';
 import 'package:task_manager/services/connectivity_service.dart';
 import 'package:task_manager/services/network_service.dart';
 import 'package:task_manager/ui/screens/home_screen/home_screen.dart';
@@ -39,6 +41,10 @@ void main() {
                 networkService: NetworkService(),
               ),
             )..add(const FetchTasks(limit: 20, skip: 0)), // Initialize here
+          ),
+          BlocProvider<ConnectivityCubit>(
+            create: (context) =>
+                ConnectivityCubit(Connectivity())..checkConnectivity(),
           ),
         ],
         child: MyApp(),

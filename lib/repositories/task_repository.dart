@@ -11,7 +11,8 @@ class TaskRepository {
 
   Future<List<Task>> fetchTasks({int limit = 10, int skip = 0}) async {
     try {
-      final response = await networkService.getTasks(pageNo: skip);
+      final response =
+          await networkService.getTasks(pageNo: skip, limit: limit);
       if (response != null && response.status) {
         final tasks = (response.data!['todos'] as List)
             .map((taskJson) => Task.fromJson(taskJson))

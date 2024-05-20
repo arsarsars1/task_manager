@@ -22,6 +22,10 @@ class TaskLoaded extends TaskState {
   List<Object> get props => [tasks, hasReachedMax];
 }
 
+class TaskUpdating extends TaskState {}
+
+class TaskDeleting extends TaskState {}
+
 class TaskError extends TaskState {
   final String error;
 

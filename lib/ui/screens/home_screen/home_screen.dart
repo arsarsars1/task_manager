@@ -6,7 +6,9 @@ import 'package:task_manager/blocs/task/task_bloc.dart';
 import 'package:task_manager/blocs/task/task_event.dart';
 import 'package:task_manager/blocs/task/task_state.dart';
 import 'package:task_manager/models/task_model.dart';
+import 'package:task_manager/services/connectivity_cubit.dart';
 import 'package:task_manager/ui/screens/home_screen/components/task_list.dart';
+import 'package:task_manager/ui/screens/loading_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -68,24 +70,60 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: BlocBuilder<TaskBloc, TaskState>(
-        builder: (context, state) {
-          if (state is TaskLoading && state is TaskInitial) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (state is TaskLoaded) {
-            _isFetching = false;
-            return TaskList(
-              scrollController: _scrollController,
-              tasks: state.tasks,
-              hasReachedMax: state.hasReachedMax,
-            );
-          } else if (state is TaskError) {
-            return const Center(child: Text('Failed to load tasks'));
-          } else {
-            return Container();
-          }
-        },
-      ),
+      body: Stack(children: [
+        Column(children: [
+          BlocBuilder<ConnectivityCubit, ConnectivityStatus>(
+            builder: (context, state) {
+              if (state == ConnectivityStatus.disconnected) {
+                return Container(
+                  color: Colors.red,
+                  padding: const EdgeInsets.all(8.0),
+                  child: const Center(
+                    child: Text(
+                      'No internet connection. You are offline.',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+          Expanded(
+            child: BlocBuilder<TaskBloc, TaskState>(
+              builder: (context, state) {
+                if (state is TaskLoading && state is TaskInitial) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (state is TaskLoaded) {
+                  _isFetching = false;
+                  if (state.tasks.isEmpty) {
+                    return const Center(child: Text('No tasks available.'));
+                  }
+                  return TaskList(
+                    scrollController: _scrollController,
+                    tasks: state.tasks,
+                    hasReachedMax: state.hasReachedMax,
+                  );
+                } else if (state is TaskError) {
+                  return Center(child: Text(state.error));
+                } else {
+                  return Container();
+                }
+              },
+            ),
+          ),
+        ]),
+        BlocBuilder<TaskBloc, TaskState>(
+          builder: (context, state) {
+            if (state is TaskUpdating ||
+                state is TaskDeleting ||
+                state is TaskLoading) {
+              return const LoadingScreen();
+            }
+            return const SizedBox.shrink();
+          },
+        ),
+      ]),
     );
   }
 

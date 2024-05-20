@@ -22,9 +22,9 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     }
 
     try {
+      emit(TaskLoading());
       final tasks =
           await taskRepository.fetchTasks(limit: event.limit, skip: event.skip);
-
       emit(TaskLoaded(
         tasks: oldTasks + tasks,
         hasReachedMax: tasks.length < event.limit,
@@ -36,11 +36,14 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
   Future<void> _onAddTask(AddTask event, Emitter<TaskState> emit) async {
     try {
-      final newTask = await taskRepository.addTask(event.task);
-      if (state is TaskLoaded) {
-        final updatedTasks = List<Task>.from((state as TaskLoaded).tasks)
-          ..add(newTask);
+      final currentState = state;
+      if (currentState is TaskLoaded) {
+        emit(TaskUpdating());
+        final newTask = await taskRepository.addTask(event.task);
+        final updatedTasks = List<Task>.from(currentState.tasks)..add(newTask);
         emit(TaskLoaded(tasks: updatedTasks, hasReachedMax: false));
+      } else {
+        emit(const TaskError(error: 'Failed to add task'));
       }
     } catch (error) {
       emit(TaskError(error: error.toString()));
@@ -48,31 +51,38 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   }
 
   Future<void> _onUpdateTask(UpdateTask event, Emitter<TaskState> emit) async {
-    try {
-      final updatedTask = await taskRepository.updateTask(event.task);
-      if (state is TaskLoaded) {
-        final updatedTasks = (state as TaskLoaded).tasks.map((task) {
+    final currentState = state;
+    if (currentState is TaskLoaded) {
+      try {
+        emit(TaskUpdating());
+        final updatedTask = await taskRepository.updateTask(event.task);
+        final updatedTasks = currentState.tasks.map((task) {
           return task.id == updatedTask.id ? updatedTask : task;
         }).toList();
         emit(TaskLoaded(tasks: updatedTasks, hasReachedMax: false));
+      } catch (error) {
+        emit(TaskError(error: error.toString()));
       }
-    } catch (error) {
-      emit(TaskError(error: error.toString()));
+    } else {
+      emit(const TaskError(error: 'Failed to update task'));
     }
   }
 
   Future<void> _onDeleteTask(DeleteTask event, Emitter<TaskState> emit) async {
-    try {
-      await taskRepository.deleteTask(event.taskId);
-      if (state is TaskLoaded) {
-        final updatedTasks = (state as TaskLoaded)
-            .tasks
+    final currentState = state;
+    if (currentState is TaskLoaded) {
+      try {
+        emit(TaskDeleting());
+        await taskRepository.deleteTask(event.taskId);
+        final updatedTasks = currentState.tasks
             .where((task) => task.id != event.taskId)
             .toList();
         emit(TaskLoaded(tasks: updatedTasks, hasReachedMax: false));
+      } catch (error) {
+        emit(TaskError(error: error.toString()));
       }
-    } catch (error) {
-      emit(TaskError(error: error.toString()));
+    } else {
+      emit(const TaskError(error: 'Failed to delete task'));
     }
   }
 }

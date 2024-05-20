@@ -6,8 +6,9 @@ import 'package:task_manager/services/task_api.dart';
 class NetworkService {
   final TaskApi taskApi = TaskApi();
 
-  Future<ApiResponseModel?> getTasks({required int pageNo}) async {
-    return await taskApi.fetchTasks(limit: 20, skip: pageNo);
+  Future<ApiResponseModel?> getTasks(
+      {required int limit, required int pageNo}) async {
+    return await taskApi.fetchTasks(limit: limit, skip: pageNo);
   }
 
   Future<ApiResponseModel?> createTask({required String description}) async {
